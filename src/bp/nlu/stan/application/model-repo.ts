@@ -15,6 +15,11 @@ export default class ModelRepository {
     mkdirp.sync(this.modelDir)
   }
 
+  public async hasModel(modelId: NLUEngine.ModelId, password: string): Promise<boolean> {
+    const model = await this.getModel(modelId, password)
+    return !!model
+  }
+
   public async getModel(modelId: NLUEngine.ModelId, password: string): Promise<NLUEngine.Model | undefined> {
     const modelFileName = this._makeFileName(modelId, password)
 

@@ -111,3 +111,24 @@ export interface TrainingSession {
   language: string
   progress: number
 }
+
+export interface Health {
+  isEnabled: boolean
+  validProvidersCount: number
+  validLanguages: string[]
+}
+
+export interface Specifications {
+  nluVersion: string // semver string
+  languageServer: {
+    dimensions: number
+    domain: string
+    version: string // semver string
+  }
+}
+
+export interface EngineInfo {
+  specs: Specifications
+  languages: string[]
+  health: Health
+}
