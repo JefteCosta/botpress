@@ -1,3 +1,4 @@
+import { Logger } from 'botpress/sdk'
 import _ from 'lodash'
 import * as NLUEngine from 'nlu/engine'
 
@@ -8,7 +9,7 @@ import ModelRepository from './model-repo'
 import { assertTrainInput } from './pre-conditions'
 import TrainService from './train-service'
 import TrainSessionService from './train-session-service'
-import { Stan as IStan } from './typings'
+import { Stan as IStan, ModelPassword } from './typings'
 
 export interface Options {
   modelDir: string
@@ -23,7 +24,8 @@ export class Stan implements IStan {
     private engine: NLUEngine.Engine,
     private modelRepo: ModelRepository,
     private trainSessionService: TrainSessionService,
-    private trainService: TrainService
+    private trainService: TrainService,
+    private logger: Logger
   ) {}
 
   public getInfo(): EngineInfo {
@@ -92,12 +94,54 @@ export class Stan implements IStan {
     throw new TrainingNotFoundError(modelId)
   }
 
+  public async detectLanguage(utterances: string[], models: ModelPassword[]) {
+    for (const { modelId, password } of models) {
+      if (!this.engine.hasModel(modelId)) {
+        const model = await this.modelRepo.getModel(modelId, password)
+        if (!model) {
+          throw new ModelNotFoundError(modelId)
+        }
+        await this.engine.loadModel(model) // try to load everything in cache
+      }
+    }
+
+    const modelCacheState = _.map(models, ({ modelId }) => ({
+      model: modelId,
+      loaded: this.engine.hasModel(modelId)
+    }))
+
+    const missingModels = _(modelCacheState)
+      .filter(mod => !mod.loaded)
+      .map(({ model }) => model)
+      .value()
+
+    if (missingModels.length) {
+      const formattedMissingModels = JSON.stringify(missingModels, undefined, 2)
+      this.logger.warn(
+        `About to detect language, but the following models are not loaded: \n${formattedMissingModels}\nMake sure you have enough cache space to fit all models for your bot.`
+      )
+    }
+
+    const loadedModels = _(modelCacheState)
+      .filter(mod => mod.loaded)
+      .map(({ model }) => model)
+      .keyBy(m => m.languageCode)
+      .value()
+
+    const predictions: string[] = await Promise.map(utterances, async utterance => {
+      const detectedLanguage = await this.engine.detectLanguage(utterance, loadedModels)
+      return detectedLanguage
+    })
+
+    return predictions
+  }
+
   public async predict(utterances: string[], modelId: NLUEngine.ModelId, password: string): Promise<PredictOutput[]> {
     // TODO: once the model is loaded, there's no more password check (to fix)
     if (!this.engine.hasModel(modelId)) {
       const model = await this.modelRepo.getModel(modelId, password)
       if (!model) {
-        throw new Error('Model not found')
+        throw new ModelNotFoundError(modelId)
       }
       await this.engine.loadModel(model)
     }

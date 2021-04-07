@@ -27,8 +27,7 @@ const TICKET_PATTERN: PatternEntityDefinition = {
   name: 'ticket',
   type: 'pattern',
   case_sensitive: true,
-  regex: '[A-Z]{3}-[0-9]{3}', // ABC-123
-  examples: ['ABC-123']
+  regex: '[A-Z]{3}-[0-9]{3}' // ABC-123
 }
 
 const VARIABLE_CITY_FROM: SlotDefinition = { name: 'city-from', entities: ['city'] }

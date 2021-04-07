@@ -1,5 +1,6 @@
 import * as sdk from 'botpress/sdk'
 import * as NLU from 'common/nlu/engine'
+import { StanClient } from 'src/backend/stan/client'
 import { I } from '../typings'
 import { IDefinitionsRepository } from './infrastructure/definitions-repository'
 
@@ -22,7 +23,7 @@ export class ScopedDefinitionsService {
 
   constructor(
     bot: BotDefinition,
-    private _engine: NLU.Engine,
+    private _engine: StanClient,
     private _definitionRepository: IDefinitionsRepository,
     private _modelIdService: typeof NLU.modelIdService
   ) {
@@ -47,10 +48,10 @@ export class ScopedDefinitionsService {
 
     const trainSet = await this.getTrainSet(languageCode)
 
-    const specifications = _engine.getSpecifications()
+    const { specs } = await _engine.getInfo()
     return this._modelIdService.makeId({
       ...trainSet,
-      specifications
+      specifications: specs
     })
   }
 
@@ -73,7 +74,7 @@ export class ScopedDefinitionsService {
 
       await Promise.filter(this._languages, async l => {
         const modelId = await this.getLatestModelId(l)
-        return !this._engine.hasModel(modelId)
+        return !this._engine.hasModel(modelId, process.APP_SECRET)
       }).mapSeries(this._notifyListeners)
     })
   }

@@ -1,7 +1,7 @@
-import * as NLU from 'common/nlu/engine'
 import _ from 'lodash'
 import yn from 'yn'
 
+import { StanClient } from '../stan/client'
 import { IScopedServicesFactory } from './bot-factory'
 import { IBotService } from './bot-service'
 import { BotNotMountedError } from './errors'
@@ -14,7 +14,7 @@ export class NLUApplication {
 
   constructor(
     private _trainingQueue: ITrainingQueue,
-    private _engine: NLU.Engine,
+    private _engine: StanClient,
     private _servicesFactory: IScopedServicesFactory,
     private _botService: IBotService,
     queueTrainingOnBotMount: boolean = true
@@ -33,8 +33,9 @@ export class NLUApplication {
     return this._trainingQueue.teardown()
   }
 
-  public getHealth() {
-    return this._engine.getHealth()
+  public async getHealth() {
+    const { health } = await this._engine.getInfo()
+    return health
   }
 
   public async getTraining(botId: string, language: string): Promise<TrainingState> {

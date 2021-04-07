@@ -6,7 +6,11 @@ import ModelRepository from './application/model-repo'
 import TrainService from './application/train-service'
 import TrainSessionService from './application/train-session-service'
 
-const makeEngine = async (options: ArgV, logger: Logger) => {
+const isCli = (o: NLUEngine.Config | ArgV): o is ArgV => {
+  return !!(o as ArgV).languageURL
+}
+
+const makeEngine = async (options: NLUEngine.Config | ArgV, logger: Logger) => {
   const loggerWrapper: NLUEngine.Logger = {
     debug: (msg: string) => logger.debug(msg),
     info: (msg: string) => logger.info(msg),
@@ -15,18 +19,30 @@ const makeEngine = async (options: ArgV, logger: Logger) => {
   }
 
   try {
-    const { ducklingEnabled, ducklingURL, modelCacheSize, languageURL, languageAuthToken } = options
-    const config: NLUEngine.Config = {
-      languageSources: [
-        {
-          endpoint: languageURL,
-          authToken: languageAuthToken
-        }
-      ],
-      ducklingEnabled,
-      ducklingURL,
-      modelCacheSize,
-      legacyElection: false
+    let config: NLUEngine.Config
+    if (isCli(options)) {
+      const { ducklingEnabled, ducklingURL, modelCacheSize, languageURL, languageAuthToken } = options
+      config = {
+        languageSources: [
+          {
+            endpoint: languageURL,
+            authToken: languageAuthToken
+          }
+        ],
+        ducklingEnabled,
+        ducklingURL,
+        modelCacheSize,
+        legacyElection: false
+      }
+    } else {
+      const { ducklingEnabled, ducklingURL, modelCacheSize, languageSources } = options
+      config = {
+        languageSources,
+        ducklingEnabled,
+        ducklingURL,
+        modelCacheSize,
+        legacyElection: false
+      }
     }
 
     const engine = await NLUEngine.makeEngine(config, loggerWrapper)
@@ -42,16 +58,17 @@ const makeEngine = async (options: ArgV, logger: Logger) => {
   }
 }
 
-export const bootstrap = async (options: ArgV, logger: Logger): Promise<Stan> => {
+export const bootstrap = async (options: NLUEngine.Config | ArgV, logger: Logger): Promise<Stan> => {
   const engine = await makeEngine(options, logger)
 
-  const modelRepo = new ModelRepository(options.modelDir)
+  const modelDir = (options as ArgV).modelDir ?? process.APP_DATA_PATH
+  const modelRepo = new ModelRepository(modelDir)
   await modelRepo.init()
 
   const trainSessionService = new TrainSessionService()
 
   const trainService = new TrainService(logger, engine, modelRepo, trainSessionService)
 
-  const stan = new Stan(engine, modelRepo, trainSessionService, trainService)
+  const stan = new Stan(engine, modelRepo, trainSessionService, trainService, logger)
   return stan
 }
