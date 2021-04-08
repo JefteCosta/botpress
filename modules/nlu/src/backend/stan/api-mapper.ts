@@ -1,14 +1,4 @@
-import {
-  TrainingSet,
-  TrainingOptions,
-  PredictOutput as BpPredictOutput,
-  SlotDefinition as BpSlotDefinition,
-  IntentDefinition as BpIntentDefinition,
-  EntityDefinition,
-  ContextPrediction as BpContextPrediction,
-  Slot as BpSlotPrediction,
-  Entity as BpEntity
-} from 'common/nlu/engine'
+import { NLU } from 'botpress/sdk'
 
 import _ from 'lodash'
 import {
@@ -21,8 +11,25 @@ import {
   IntentPrediction as StanIntentPrediction,
   SlotPrediction as StanSlotPrediction,
   ContextPrediction as StanContextPrediction,
-  EntityPrediction as StanEntityPrediction
+  EntityPrediction as StanEntityPrediction,
+  TrainSet
 } from './typings'
+
+type BpSlotDefinition = NLU.SlotDefinition
+type BpIntentDefinition = NLU.IntentDefinition
+type BpEntityDefinition = NLU.EntityDefinition
+
+type BpSlotPrediction = NLU.Slot
+type BpEntityPrediction = NLU.Entity
+type BpPredictOutput = any
+
+type BpContextPrediction = NLU.ContextPrediction
+interface BpTrainSet {
+  intentDefs: BpIntentDefinition[]
+  entityDefs: BpEntityDefinition[]
+  languageCode: string
+  seed: number
+}
 
 /**
  * ################
@@ -30,15 +37,15 @@ import {
  * ################
  */
 
-const isListEntity = (e: EntityDefinition) => {
+const isListEntity = (e: BpEntityDefinition) => {
   return e.type === 'list'
 }
 
-const isPatternEntity = (e: EntityDefinition) => {
+const isPatternEntity = (e: BpEntityDefinition) => {
   return e.type === 'pattern'
 }
 
-const isCustomEntity = (e: EntityDefinition) => {
+const isCustomEntity = (e: BpEntityDefinition) => {
   return isListEntity(e) || isPatternEntity(e)
 }
 
@@ -60,7 +67,7 @@ const makeIntentMapper = (lang: string) => (intent: BpIntentDefinition): StanInt
   }
 }
 
-const mapList = (listDef: EntityDefinition): ListEntityDefinition => {
+const mapList = (listDef: BpEntityDefinition): ListEntityDefinition => {
   const { name, fuzzy, occurrences, examples } = listDef
 
   return {
@@ -71,7 +78,7 @@ const mapList = (listDef: EntityDefinition): ListEntityDefinition => {
   }
 }
 
-const mapPattern = (patternDef: EntityDefinition): PatternEntityDefinition => {
+const mapPattern = (patternDef: BpEntityDefinition): PatternEntityDefinition => {
   const { name, pattern, matchCase } = patternDef
 
   return {
@@ -82,26 +89,30 @@ const mapPattern = (patternDef: EntityDefinition): PatternEntityDefinition => {
   }
 }
 
-export const mapTrainInput = (
-  trainSet: TrainingSet,
-  options: Partial<TrainingOptions>,
-  password: string
-): TrainInput => {
-  const { intentDefs, entityDefs, languageCode, seed } = trainSet
-  const contexts = _(intentDefs)
+export const mapTrainInput = (trainSet: TrainSet, password: string): TrainInput => {
+  const { intents } = trainSet
+  const contexts = _(intents)
     .flatMap(i => i.contexts)
     .uniq()
     .value()
+
+  return {
+    ...trainSet,
+    contexts,
+    password
+  }
+}
+
+export const mapTrainSet = (bpTrainSet: BpTrainSet): TrainSet => {
+  const { intentDefs, entityDefs, languageCode, seed } = bpTrainSet
 
   const entities = entityDefs.filter(isCustomEntity).map(e => (isPatternEntity(e) ? mapPattern(e) : mapList(e)))
 
   const intentMapper = makeIntentMapper(languageCode)
 
-  const stanTrainInput: TrainInput = {
-    contexts,
+  const stanTrainInput: TrainSet = {
     entities,
     language: languageCode,
-    password,
     seed,
     intents: intentDefs.map(intentMapper)
   }
@@ -114,7 +125,7 @@ export const mapTrainInput = (
  * ##################
  */
 
-function mapEntity(entity: StanEntityPrediction): BpEntity {
+function mapEntity(entity: StanEntityPrediction): BpEntityPrediction {
   const { name, type, start, end, confidence, source, value, unit } = entity
 
   return {

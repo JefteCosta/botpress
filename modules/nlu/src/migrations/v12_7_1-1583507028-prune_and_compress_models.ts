@@ -1,11 +1,11 @@
 import * as sdk from 'botpress/sdk'
-import { Model } from 'common/nlu/engine'
 import fse, { WriteStream } from 'fs-extra'
 import _ from 'lodash'
 import path from 'path'
 import { Stream } from 'stream'
 import tar from 'tar'
 import tmp from 'tmp'
+import { Model } from '../backend/stan/typings'
 
 export const MODELS_DIR = './models'
 const MAX_MODELS_TO_KEEP = 2

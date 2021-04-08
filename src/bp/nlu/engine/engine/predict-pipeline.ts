@@ -1,6 +1,6 @@
 import { MLToolkit } from 'botpress/sdk'
 import _ from 'lodash'
-import { PredictOutput, Entity, SlotCollection, Predictions } from '../typings'
+import { PredictOutput, BpEntityPrediction, SlotCollection, Predictions } from '../typings'
 
 import { extractListEntities, extractPatternEntities } from './entities/custom-entity-extractor'
 import { IntentPredictions, NoneableIntentPredictions } from './intents/intent-classifier'
@@ -160,7 +160,7 @@ async function spellCheck(input: SlotStep, predictors: Predictors, tools: Tools)
 }
 
 function MapStepToOutput(step: SpellStep): PredictOutput {
-  const entitiesMapper = (e?: EntityExtractionResult | UtteranceEntity): Entity => {
+  const entitiesMapper = (e?: EntityExtractionResult | UtteranceEntity): BpEntityPrediction => {
     if (!e) {
       return eval('null')
     }

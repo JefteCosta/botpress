@@ -1,10 +1,4 @@
-import {
-  IntentDefinition,
-  ListEntityDefinition,
-  PatternEntityDefinition,
-  SlotDefinition,
-  TrainInput
-} from '../../typings_v1'
+import { IntentDefinition, ListEntityDefinition, SlotDefinition, TrainInput } from '../../../typings_v1'
 
 import { validateTrainInput } from './validate'
 

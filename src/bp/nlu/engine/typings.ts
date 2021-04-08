@@ -1,3 +1,5 @@
+import { TrainSet, Specifications, ModelId, Health, Model } from 'nlu/typings_v1'
+
 export interface Config extends LanguageConfig {
   modelCacheSize: string
   legacyElection: boolean
@@ -21,14 +23,7 @@ export interface Logger {
   error: (msg: string, err?: Error) => void
 }
 
-export interface TrainingSet {
-  intentDefs: IntentDefinition[]
-  entityDefs: EntityDefinition[]
-  languageCode: string
-  seed: number // seeds random number generator in nlu training
-}
-
-export interface ModelIdArgs extends TrainingSet {
+export interface ModelIdArgs extends TrainSet {
   specifications: Specifications
 }
 
@@ -46,7 +41,7 @@ export interface Engine {
   unloadModel: (modelId: ModelId) => void
   hasModel: (modelId: ModelId) => boolean
 
-  train: (trainSessionId: string, trainSet: TrainingSet, options?: Partial<TrainingOptions>) => Promise<Model>
+  train: (trainSessionId: string, trainSet: TrainSet, options?: Partial<TrainingOptions>) => Promise<Model>
   cancelTraining: (trainSessionId: string) => Promise<void>
 
   detectLanguage: (text: string, modelByLang: { [key: string]: ModelId }) => Promise<string>
@@ -61,80 +56,13 @@ export interface ModelIdService {
   briefId: (factors: Partial<ModelIdArgs>) => Partial<ModelId> // makes incomplete Id from incomplete information
 }
 
-export interface ModelId {
-  specificationHash: string // represents the nlu engine that was used to train the model
-  contentHash: string // represents the intent and entity definitions the model was trained with
-  seed: number // number to seed the random number generators used during nlu training
-  languageCode: string // language of the model
-}
-
-export interface Specifications {
-  nluVersion: string // semver string
-  languageServer: {
-    dimensions: number
-    domain: string
-    version: string // semver string
-  }
-}
-
-export interface Model {
-  id: ModelId
-  startedAt: Date
-  finishedAt: Date
-  data: {
-    input: string
-    output: string
-  }
-}
-
-export interface Health {
-  isEnabled: boolean
-  validProvidersCount: number
-  validLanguages: string[]
-}
-
-export type EntityType = 'system' | 'pattern' | 'list'
-
-export interface EntityDefOccurrence {
-  name: string
-  synonyms: string[]
-}
-
-export interface EntityDefinition {
-  id: string
-  name: string
-  type: EntityType
-  sensitive?: boolean
-  matchCase?: boolean
-  examples?: string[]
-  fuzzy?: number
-  occurrences?: EntityDefOccurrence[]
-  pattern?: string
-}
-
-export interface SlotDefinition {
-  id: string
-  name: string
-  entities: string[]
-  color: number
-}
-
-export interface IntentDefinition {
-  name: string
-  utterances: {
-    [lang: string]: string[]
-  }
-  slots: SlotDefinition[]
-  contexts: string[]
-}
-
 export interface Intent {
   name: string
   confidence: number
   context: string
 }
 
-export interface Entity {
+export interface BpEntityPrediction {
   name: string
   type: string
   meta: EntityMeta
@@ -161,7 +89,7 @@ export interface Slot {
   name: string
   value: any
   source: any
-  entity: Entity
+  entity: BpEntityPrediction
   confidence: number
   start: number
   end: number
@@ -187,7 +115,7 @@ export interface ContextPrediction {
 }
 
 export interface PredictOutput {
-  readonly entities: Entity[]
+  readonly entities: BpEntityPrediction[]
   readonly predictions: Predictions
   readonly spellChecked: string
 }

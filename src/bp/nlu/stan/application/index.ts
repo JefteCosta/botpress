@@ -2,8 +2,8 @@ import { Logger } from 'botpress/sdk'
 import _ from 'lodash'
 import * as NLUEngine from 'nlu/engine'
 
-import { PredictOutput, TrainInput, EngineInfo, TrainingSession } from '../typings_v1'
-import { BpPredictOutput, mapPredictOutput, mapTrainInput } from './api-mapper'
+import { PredictOutput, TrainInput, EngineInfo, TrainingSession, ModelId } from '../../typings_v1'
+import { BpPredictOutput, mapPredictOutput } from './api-mapper'
 import { ModelNotFoundError, TrainingNotFoundError } from './errors'
 import ModelRepository from './model-repo'
 import { assertTrainInput } from './pre-conditions'
@@ -35,16 +35,16 @@ export class Stan implements IStan {
     return { specs, health, languages }
   }
 
-  public startTraining(trainInput: TrainInput): NLUEngine.ModelId {
+  public startTraining(trainInput: TrainInput): ModelId {
     trainInput = assertTrainInput(trainInput)
 
-    const { intents, entities, seed, language, password } = mapTrainInput(trainInput)
+    const { intents, entities, seed, language, password } = trainInput
     const pickedSeed = seed ?? Math.round(Math.random() * 10000)
     const modelId = NLUEngine.modelIdService.makeId({
       specifications: this.engine.getSpecifications(),
-      intentDefs: intents,
-      entityDefs: entities,
-      languageCode: language,
+      intents,
+      entities,
+      language,
       seed: pickedSeed
     })
 
@@ -54,7 +54,7 @@ export class Stan implements IStan {
     return modelId
   }
 
-  public async getTrainingStatus(modelId: NLUEngine.ModelId, password: string): Promise<TrainingSession> {
+  public async getTrainingStatus(modelId: ModelId, password: string): Promise<TrainingSession> {
     let session = this.trainSessionService.getTrainingSession(modelId, password)
 
     if (!session) {
@@ -76,14 +76,14 @@ export class Stan implements IStan {
     return session
   }
 
-  public async hasModel(modelId: NLUEngine.ModelId, password: string): Promise<boolean> {
+  public async hasModel(modelId: ModelId, password: string): Promise<boolean> {
     if (this.engine.hasModel(modelId)) {
       return true
     }
     return this.modelRepo.hasModel(modelId, password)
   }
 
-  public async cancelTraining(modelId: NLUEngine.ModelId, password: string): Promise<void> {
+  public async cancelTraining(modelId: ModelId, password: string): Promise<void> {
     const session = this.trainSessionService.getTrainingSession(modelId, password)
 
     if (session?.status === 'training') {
@@ -136,7 +136,7 @@ export class Stan implements IStan {
     return predictions
   }
 
-  public async predict(utterances: string[], modelId: NLUEngine.ModelId, password: string): Promise<PredictOutput[]> {
+  public async predict(utterances: string[], modelId: ModelId, password: string): Promise<PredictOutput[]> {
     // TODO: once the model is loaded, there's no more password check (to fix)
     if (!this.engine.hasModel(modelId)) {
       const model = await this.modelRepo.getModel(modelId, password)

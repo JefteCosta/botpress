@@ -4,19 +4,12 @@ import LRUCache from 'lru-cache'
 import sizeof from 'object-sizeof'
 
 import v8 from 'v8'
+import { isListEntity, isPatternEntity } from '../../guards'
+import { TrainSet, ModelId, Model } from '../../typings_v1'
 
 import modelIdService from '../model-id-service'
 
-import {
-  TrainingOptions,
-  LanguageConfig,
-  Logger,
-  ModelId,
-  TrainingSet,
-  Model,
-  PredictOutput,
-  Engine as IEngine
-} from '../typings'
+import { TrainingOptions, LanguageConfig, Logger, PredictOutput, Engine as IEngine } from '../typings'
 import { deserializeKmeans } from './clustering'
 import { EntityCacheManager } from './entities/entity-cache-manager'
 import { initializeTools } from './initialize-tools'
@@ -123,74 +116,73 @@ export default class Engine implements IEngine {
     return !!this.modelsById.get(stringId)
   }
 
-  async train(trainId: string, trainSet: TrainingSet, opt: Partial<TrainingOptions> = {}): Promise<Model> {
-    const { languageCode, seed, entityDefs, intentDefs } = trainSet
-    trainDebug(`[${trainId}] Started ${languageCode} training`)
+  async train(trainId: string, trainSet: TrainSet, opt: Partial<TrainingOptions> = {}): Promise<Model> {
+    const { language, seed, entities, intents } = trainSet
+    trainDebug(`[${trainId}] Started ${language} training`)
 
     const options = { ...DEFAULT_TRAINING_OPTIONS, ...opt }
 
     const { previousModel: previousModelId, progressCallback } = options
     const previousModel = previousModelId && this.modelsById.get(modelIdService.toString(previousModelId))
 
-    const list_entities = entityDefs
-      .filter(ent => ent.type === 'list')
-      .map(e => {
-        return <ListEntity & { cache: EntityCacheDump }>{
-          name: e.name,
-          fuzzyTolerance: e.fuzzy,
-          sensitive: e.sensitive,
-          synonyms: _.chain(e.occurrences)
-            .keyBy('name')
-            .mapValues('synonyms')
-            .value(),
-          cache: previousModel?.entityCache.getCache(e.name) || []
-        }
-      })
+    const list_entities = entities.filter(isListEntity).map(e => {
+      return <ListEntity & { cache: EntityCacheDump }>{
+        name: e.name,
+        fuzzyTolerance: e.fuzzy,
+        sensitive: e.sensitive,
+        synonyms: _.chain(e.values)
+          .keyBy(e => e.name)
+          .mapValues(e => e.synonyms)
+          .value(),
+        cache: previousModel?.entityCache.getCache(e.name) || []
+      }
+    })
 
-    const pattern_entities: PatternEntity[] = entityDefs
-      .filter(ent => ent.type === 'pattern' && isPatternValid(ent.pattern))
+    const pattern_entities: PatternEntity[] = entities
+      .filter(isPatternEntity)
+      .filter(ent => isPatternValid(ent.regex))
       .map(ent => ({
         name: ent.name,
-        pattern: ent.pattern!,
+        pattern: ent.regex!,
         examples: [], // TODO add this to entityDef
-        matchCase: !!ent.matchCase,
+        matchCase: !!ent.case_sensitive,
         sensitive: !!ent.sensitive
       }))
 
-    const contexts = _.chain(intentDefs)
+    const contexts = _.chain(intents)
       .flatMap(i => i.contexts)
       .uniq()
       .value()
 
-    const intents = intentDefs
-      .filter(x => !!x.utterances[languageCode])
+    const intents_defs = intents
+      .filter(x => !!x.utterances[language])
       .map(x => ({
         name: x.name,
         contexts: x.contexts,
-        utterances: x.utterances[languageCode],
+        utterances: x.utterances[language],
         slot_definitions: x.slots
       }))
 
     let ctxToTrain = contexts
     if (previousModel) {
       const previousIntents = previousModel.model.data.input.intents
-      const contextChangeLog = getModifiedContexts(intents, previousIntents)
+      const contextChangeLog = getModifiedContexts(intents_defs, previousIntents)
       ctxToTrain = [...contextChangeLog.createdContexts, ...contextChangeLog.modifiedContexts]
     }
 
     const debugMsg = previousModel
-      ? `Retraining only contexts: [${ctxToTrain}] for language: ${languageCode}`
-      : `Training all contexts for language: ${languageCode}`
+      ? `Retraining only contexts: [${ctxToTrain}] for language: ${language}`
+      : `Training all contexts for language: ${language}`
     trainDebug(`[${trainId}] ${debugMsg}`)
 
     const input: TrainInput = {
       trainId,
       nluSeed: seed,
-      languageCode,
+      languageCode: language,
       list_entities,
       pattern_entities,
       contexts,
-      intents,
+      intents: intents_defs,
       ctxToTrain
     }
 
@@ -216,7 +208,7 @@ export default class Engine implements IEngine {
       model.data.output = mergeModelOutputs(model.data.output, previousModel.model.data.output, contexts)
     }
 
-    trainDebug(`[${trainId}] Successfully finished ${languageCode} training`)
+    trainDebug(`[${trainId}] Successfully finished ${language} training`)
 
     return serializeModel(model)
   }

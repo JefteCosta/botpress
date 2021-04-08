@@ -4,7 +4,7 @@ import {
   PatternEntityDefinition,
   SlotDefinition,
   TrainInput
-} from '../typings_v1'
+} from '../../typings_v1'
 
 import { assertTrainInput } from './pre-conditions'
 

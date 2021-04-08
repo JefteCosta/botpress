@@ -1,6 +1,6 @@
 import _ from 'lodash'
-import { Model } from '../typings'
 
+import { Model } from 'nlu/typings_v1'
 import { TrainInput, TrainOutput } from './training-pipeline'
 
 export type PredictableModel = Omit<Model, 'data'> & {

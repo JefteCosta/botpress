@@ -6,13 +6,22 @@
  * ################################
  */
 export interface TrainInput {
-  language: string
   contexts: string[]
   intents: IntentDefinition[]
-  entities: (ListEntityDefinition | PatternEntityDefinition)[]
+  entities: EntityDefinition[]
+  language: string
   password: string
   seed?: number
 }
+
+export interface TrainSet {
+  intents: IntentDefinition[]
+  entities: EntityDefinition[]
+  language: string
+  seed: number
+}
+
+export type EntityDefinition = ListEntityDefinition | PatternEntityDefinition
 
 export interface IntentDefinition {
   name: string
@@ -31,6 +40,7 @@ export interface ListEntityDefinition {
   type: 'list'
   values: { name: string; synonyms: string[] }[]
   fuzzy: number
+  sensitive?: boolean
 }
 
 export interface PatternEntityDefinition {
@@ -38,6 +48,7 @@ export interface PatternEntityDefinition {
   type: 'pattern'
   regex: string
   case_sensitive: boolean
+  sensitive?: boolean
 }
 
 export interface PredictInput {
@@ -130,4 +141,41 @@ export interface EngineInfo {
   specs: Specifications
   languages: string[]
   health: Health
+}
+
+/**
+ * ################################
+ * ############ OTHERS ############
+ * ################################
+ */
+export interface ModelId {
+  specificationHash: string // represents the nlu engine that was used to train the model
+  contentHash: string // represents the intent and entity definitions the model was trained with
+  seed: number // number to seed the random number generators used during nlu training
+  languageCode: string // language of the model
+}
+
+export interface Specifications {
+  nluVersion: string // semver string
+  languageServer: {
+    dimensions: number
+    domain: string
+    version: string // semver string
+  }
+}
+
+export interface Model {
+  id: ModelId
+  startedAt: Date
+  finishedAt: Date
+  data: {
+    input: string
+    output: string
+  }
+}
+
+export interface Health {
+  isEnabled: boolean
+  validProvidersCount: number
+  validLanguages: string[]
 }

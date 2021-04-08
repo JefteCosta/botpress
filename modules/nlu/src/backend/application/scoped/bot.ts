@@ -1,8 +1,10 @@
 import * as sdk from 'botpress/sdk'
-import * as NLU from 'common/nlu/engine'
 import _ from 'lodash'
-import { StanClient } from 'src/backend/stan/client'
+
 import { mapTrainInput } from '../../stan/api-mapper'
+import { StanClient } from '../../stan/client'
+import modelIdService from '../../stan/model-id-service'
+import { ModelId } from '../../stan/typings'
 import { BotDoesntSpeakLanguageError } from '../errors'
 import { Predictor, ProgressCallback, Trainable, I } from '../typings'
 
@@ -22,8 +24,8 @@ export class Bot implements Trainable, Predictor {
   private _defaultLanguage: string
   private _languages: string[]
 
-  private _modelsByLang: _.Dictionary<NLU.ModelId> = {}
-  private _trainingByLang: _.Dictionary<NLU.ModelId> = {}
+  private _modelsByLang: _.Dictionary<ModelId> = {}
+  private _trainingByLang: _.Dictionary<ModelId> = {}
 
   private _predictor: ScopedPredictionHandler
 
@@ -31,7 +33,7 @@ export class Bot implements Trainable, Predictor {
     bot: BotDefinition,
     private _engine: StanClient,
     private _defService: IDefinitionsService,
-    private _modelIdService: typeof NLU.modelIdService,
+    private _modelIdService: typeof modelIdService,
     private _logger: sdk.Logger
   ) {
     this._botId = bot.botId
@@ -60,25 +62,24 @@ export class Bot implements Trainable, Predictor {
     }
   }
 
-  public load = async (modelId: NLU.ModelId) => {
+  public load = async (modelId: ModelId) => {
     this._modelsByLang[modelId.languageCode] = modelId
   }
 
-  public train = async (language: string, progressCallback: ProgressCallback): Promise<NLU.ModelId> => {
+  public train = async (language: string, progressCallback: ProgressCallback): Promise<ModelId> => {
     const { _engine, _languages, _defService, _botId } = this
 
     if (!_languages.includes(language)) {
       throw new BotDoesntSpeakLanguageError(_botId, language)
     }
 
-    const trainSet: NLU.TrainingSet = await _defService.getTrainSet(language)
+    const trainSet = await _defService.getTrainSet(language)
 
     const previousModel = this._modelsByLang[language]
-    const options: NLU.TrainingOptions = { previousModel, progressCallback }
 
     const password = process.APP_SECRET
-    const stanTrainInput = mapTrainInput(trainSet, options, password)
-    const modelId: NLU.ModelId = await _engine.startTraining(stanTrainInput)
+    const stanTrainInput = mapTrainInput(trainSet, password)
+    const modelId: ModelId = await _engine.startTraining(stanTrainInput)
 
     this._trainingByLang[modelId.languageCode] = modelId
 

@@ -1,11 +1,12 @@
 import * as sdk from 'botpress/sdk'
-import { ModelId, ModelIdService, Model } from 'common/nlu/engine'
 
 import _ from 'lodash'
 
-import { StanClient } from 'src/backend/stan/client'
 import mergeSpellChecked from '../../election/spellcheck-handler'
 import { mapPredictOutput } from '../../stan/api-mapper'
+import { StanClient } from '../../stan/client'
+import modelIdService from '../../stan/model-id-service'
+import { ModelId } from '../../stan/typings'
 import { EventUnderstanding } from '../typings'
 
 interface BotDefinition {
@@ -19,7 +20,7 @@ export class ScopedPredictionHandler {
   constructor(
     bot: BotDefinition,
     private engine: StanClient,
-    private modelIdService: ModelIdService,
+    private _modelIdService: typeof modelIdService,
     private modelsByLang: _.Dictionary<ModelId>,
     private logger: sdk.Logger
   ) {
@@ -89,7 +90,7 @@ export class ScopedPredictionHandler {
       }
       return { ...originalOutput, spellChecked, errored: false, language, ms }
     } catch (err) {
-      const stringId = this.modelIdService.toString(this.modelsByLang[language])
+      const stringId = this._modelIdService.toString(this.modelsByLang[language])
       const msg = `An error occured when predicting for input "${textInput}" with model ${stringId}`
       this.logger.attachError(err).error(msg)
 

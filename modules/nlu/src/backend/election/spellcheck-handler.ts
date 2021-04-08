@@ -1,7 +1,12 @@
-import { PredictOutput, Predictions } from 'common/nlu/engine'
+import { IO, NLU } from 'botpress/sdk'
 import _ from 'lodash'
 
 import { NONE_INTENT, ValueOf } from './typings'
+
+type Predictions = Dic<NLU.ContextPrediction>
+interface PredictOutput {
+  predictions: Predictions
+}
 
 const mergeSpellChecked = (originalOutput: PredictOutput, spellCheckedOutput: PredictOutput): PredictOutput => {
   const mostConfidentContext = (preds: Predictions): ValueOf<Predictions> =>

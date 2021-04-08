@@ -3,6 +3,7 @@ import fse, { WriteStream } from 'fs-extra'
 import _ from 'lodash'
 import mkdirp from 'mkdirp'
 import * as NLUEngine from 'nlu/engine'
+import { Model, ModelId } from 'nlu/typings_v1'
 import path from 'path'
 import { Stream } from 'stream'
 import tar from 'tar'
@@ -15,12 +16,12 @@ export default class ModelRepository {
     mkdirp.sync(this.modelDir)
   }
 
-  public async hasModel(modelId: NLUEngine.ModelId, password: string): Promise<boolean> {
+  public async hasModel(modelId: ModelId, password: string): Promise<boolean> {
     const model = await this.getModel(modelId, password)
     return !!model
   }
 
-  public async getModel(modelId: NLUEngine.ModelId, password: string): Promise<NLUEngine.Model | undefined> {
+  public async getModel(modelId: ModelId, password: string): Promise<Model | undefined> {
     const modelFileName = this._makeFileName(modelId, password)
 
     const { modelDir } = this
@@ -49,7 +50,7 @@ export default class ModelRepository {
     }
   }
 
-  public async saveModel(model: NLUEngine.Model, password: string): Promise<void> {
+  public async saveModel(model: Model, password: string): Promise<void> {
     const { modelDir } = this
     const modelFileName = this._makeFileName(model.id, password)
 
@@ -75,7 +76,7 @@ export default class ModelRepository {
     tmpDir.removeCallback()
   }
 
-  private _makeFileName(modelId: NLUEngine.ModelId, password: string): string {
+  private _makeFileName(modelId: ModelId, password: string): string {
     const stringId = NLUEngine.modelIdService.toString(modelId)
     const fname = crypto
       .createHash('md5')

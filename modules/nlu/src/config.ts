@@ -1,5 +1,3 @@
-import { LanguageSource } from 'common/nlu/engine'
-
 export interface Config {
   /**
    * If you want a fully on-prem installation, you can host
@@ -25,7 +23,10 @@ export interface Config {
    * The list of sources to load languages from
    * @default [{ "endpoint": "https://lang-01.botpress.io" }]
    */
-  languageSources: LanguageSource[]
+  languageSources: {
+    endpoint: string
+    authToken?: string
+  }[]
 
   /**
    * Maximum allowed model cache size

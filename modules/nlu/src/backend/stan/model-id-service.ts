@@ -1,7 +1,15 @@
 import crypto from 'crypto'
 import _ from 'lodash'
-import { EntityDefinition, IntentDefinition, ModelId, Specifications } from 'nlu/typings_v1'
-import { ModelIdArgs, ModelIdService } from './typings'
+
+import { EntityDefinition, IntentDefinition, ModelId, Specifications, TrainSet } from './typings'
+
+/**
+ * ##########################
+ * ### COPIED FROM ENGINE ###
+ * ##########################
+ */
+
+type ModelIdArgs = TrainSet & { specifications: Specifications }
 
 export const HALF_MD5_REG = /^[a-fA-F0-9]{16}$/
 
@@ -105,7 +113,7 @@ const briefId = (factors: Partial<ModelIdArgs>): Partial<ModelId> => {
   return briefedId
 }
 
-const modelIdService: ModelIdService = {
+const modelIdService = {
   toString,
   fromString,
   isId,

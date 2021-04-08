@@ -2,6 +2,7 @@ import * as sdk from 'botpress/sdk'
 
 import * as NLUEngine from 'nlu/engine'
 
+import { IntentDefinition, EntityDefinition, TrainSet, ModelId } from 'nlu/typings_v1'
 import ModelRepository from './model-repo'
 import TrainSessionService from './train-session-service'
 
@@ -14,10 +15,10 @@ export default class TrainService {
   ) {}
 
   train = async (
-    modelId: NLUEngine.ModelId,
+    modelId: ModelId,
     password: string,
-    intents: sdk.NLU.IntentDefinition[],
-    entities: sdk.NLU.EntityDefinition[],
+    intents: IntentDefinition[],
+    entities: EntityDefinition[],
     language: string,
     nluSeed: number
   ) => {
@@ -36,10 +37,10 @@ export default class TrainService {
     }
 
     try {
-      const trainSet: NLUEngine.TrainingSet = {
-        intentDefs: intents,
-        entityDefs: entities,
-        languageCode: language,
+      const trainSet: TrainSet = {
+        intents,
+        entities,
+        language,
         seed: nluSeed
       }
       const model = await this.engine.train(ts.key, trainSet, { progressCallback })

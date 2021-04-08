@@ -1,12 +1,12 @@
 import * as NLUEngine from 'nlu/engine'
+import { isListEntity, isPatternEntity } from 'nlu/guards'
 import {
   ListEntityDefinition,
   PatternEntityDefinition,
   SlotDefinition,
   IntentDefinition,
   TrainInput
-} from '../typings_v1'
-import { isListEntity, isPatternEntity } from './api-mapper'
+} from '../../typings_v1'
 import { PreconditionError } from './errors'
 
 const SLOT_ANY = 'any'

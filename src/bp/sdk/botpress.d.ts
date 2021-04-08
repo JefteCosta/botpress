@@ -534,6 +534,17 @@ declare module 'botpress/sdk' {
     }
 
     export type SlotCollection = Dic<Slot>
+
+    export interface ContextPrediction {
+      confidence: number
+      oos: number
+      intents: {
+        label: string
+        confidence: number
+        slots: NLU.SlotCollection
+        extractor: string
+      }[]
+    }
   }
 
   export namespace NDU {
@@ -685,16 +696,7 @@ declare module 'botpress/sdk' {
       readonly errored: boolean
 
       readonly predictions?: {
-        [context: string]: {
-          confidence: number
-          oos: number
-          intents: {
-            label: string
-            confidence: number
-            slots: NLU.SlotCollection
-            extractor: string
-          }[]
-        }
+        [context: string]: NLU.ContextPrediction
       }
 
       // election

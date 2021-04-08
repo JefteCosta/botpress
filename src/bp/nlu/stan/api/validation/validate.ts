@@ -1,7 +1,7 @@
 import { validate } from 'joi'
 
 import { PreconditionError } from 'nlu/stan/application/errors'
-import { PredictInput, TrainInput } from '../../typings_v1'
+import { PredictInput, TrainInput } from '../../../typings_v1'
 
 import { CancelInputSchema, PredictInputSchema, TrainInputSchema } from './schemas'
 

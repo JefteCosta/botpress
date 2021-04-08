@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios'
-import { ModelId, modelIdService } from 'common/nlu/engine'
-import { EngineInfo, TrainInput, PredictOutput, TrainingSession } from './typings'
+import modelIdService from './model-id-service'
+import { EngineInfo, TrainInput, PredictOutput, TrainingSession, ModelId } from './typings'
 
 const TRAIN_PROGRESS_POLLING_INTERVAL = 500
 

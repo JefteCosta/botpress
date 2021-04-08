@@ -1,6 +1,8 @@
 import * as sdk from 'botpress/sdk'
-import * as NLU from 'common/nlu/engine'
-import { StanClient } from 'src/backend/stan/client'
+import { mapTrainSet } from '../../stan/api-mapper'
+import { StanClient } from '../../stan/client'
+import modelIdService from '../../stan/model-id-service'
+import { ModelId } from '../../stan/typings'
 import { I } from '../typings'
 import { IDefinitionsRepository } from './infrastructure/definitions-repository'
 
@@ -25,7 +27,7 @@ export class ScopedDefinitionsService {
     bot: BotDefinition,
     private _engine: StanClient,
     private _definitionRepository: IDefinitionsRepository,
-    private _modelIdService: typeof NLU.modelIdService
+    private _modelIdService: typeof modelIdService
   ) {
     this._languages = bot.languages
     this._seed = bot.seed
@@ -43,7 +45,7 @@ export class ScopedDefinitionsService {
     this._dirtyModelsListeners.push(listener)
   }
 
-  public async getLatestModelId(languageCode: string): Promise<NLU.ModelId> {
+  public async getLatestModelId(languageCode: string): Promise<ModelId> {
     const { _engine } = this
 
     const trainSet = await this.getTrainSet(languageCode)
@@ -55,14 +57,16 @@ export class ScopedDefinitionsService {
     })
   }
 
-  public async getTrainSet(languageCode: string): Promise<NLU.TrainingSet> {
+  public async getTrainSet(languageCode: string) {
     const trainDefinitions = await this._definitionRepository.getTrainDefinitions()
 
-    return {
+    const trainSet = mapTrainSet({
       ...trainDefinitions,
       languageCode,
       seed: this._seed
-    }
+    })
+
+    return trainSet
   }
 
   private _registerNeedTrainingWatcher = () => {
