@@ -60,22 +60,19 @@ export class StanClient {
     return exists
   }
 
-  public async detectLanguage(
-    utterances: string[],
-    models: { modelId: ModelId; password: string }[]
-  ): Promise<string[]> {
+  public async detectLanguage(utterance: string, models: { modelId: ModelId; password: string }[]): Promise<string> {
     const { modelId, password } = models[0]
     const stringId = modelIdService.toString(modelId)
     const endpoint = `detect-lang/${stringId}`
-    const { languages } = await this._post(endpoint, { utterances, password })
-    return languages
+    const { languages } = await this._post(endpoint, { utterances: [utterance], password })
+    return languages[0]
   }
 
-  public async predict(utterances: string[], modelId: ModelId, password: string): Promise<PredictOutput[]> {
+  public async predict(utterance: string, modelId: ModelId, password: string): Promise<PredictOutput> {
     const stringId = modelIdService.toString(modelId)
     const endpoint = `predict/${stringId}`
-    const { predictions } = await this._post(endpoint, { utterances, password })
-    return predictions
+    const { predictions } = await this._post(endpoint, { utterances: [utterance], password })
+    return predictions[0]
   }
 
   private async _get(endpoint: string, queryParams: any) {

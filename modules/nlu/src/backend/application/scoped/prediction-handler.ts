@@ -39,8 +39,7 @@ export class ScopedPredictionHandler {
 
     let detectedLanguage: string | undefined
     try {
-      const detectedLanguages = await this.engine.detectLanguage([textInput], models)
-      detectedLanguage = detectedLanguages[0]
+      detectedLanguage = await this.engine.detectLanguage(textInput, models)
     } catch (err) {
       let msg = `An error occured when detecting language for input "${textInput}"\n`
       msg += `Falling back on default language: ${defaultLanguage}.`
@@ -78,21 +77,19 @@ export class ScopedPredictionHandler {
 
     const t0 = Date.now()
     try {
-      const [originalOutput] = await this.engine.predict([textInput], this.modelsByLang[language], password)
+      const stanOutput = await this.engine.predict(textInput, this.modelsByLang[language], password)
+      const originalOutput = mapPredictOutput(stanOutput)
       const ms = Date.now() - t0
 
       const { spellChecked } = originalOutput
 
-      // TODO: bring back spell check handling
-
-      // if (spellChecked && spellChecked !== textInput) {
-      //   const [spellCheckedOutput] = await this.engine.predict([spellChecked], this.modelsByLang[language], password)
-      //   const merged = mergeSpellChecked(originalOutput, spellCheckedOutput)
-      //   return { ...merged, spellChecked, errored: false, language, ms }
-      // }
-
-      const bpOutput = mapPredictOutput(originalOutput)
-      return { ...bpOutput, spellChecked, errored: false, language, ms }
+      if (spellChecked && spellChecked !== textInput) {
+        const stanSpellCheckedOutput = await this.engine.predict(spellChecked, this.modelsByLang[language], password)
+        const spellCheckedOutput = mapPredictOutput(stanSpellCheckedOutput)
+        const merged = mergeSpellChecked(originalOutput, spellCheckedOutput)
+        return { ...merged, spellChecked, errored: false, language, ms }
+      }
+      return { ...originalOutput, spellChecked, errored: false, language, ms }
     } catch (err) {
       const stringId = this.modelIdService.toString(this.modelsByLang[language])
       const msg = `An error occured when predicting for input "${textInput}" with model ${stringId}`
