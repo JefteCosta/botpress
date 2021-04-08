@@ -126,7 +126,7 @@ export default async function(options: APIOptions, stan: Stan) {
   router.get('/exists/:modelId', async (req, res) => {
     try {
       const { modelId: stringId } = req.params
-      const { password } = await validatePassword(req.body)
+      const { password } = req.query
 
       const modelId = NLUEngine.modelIdService.fromString(stringId)
 

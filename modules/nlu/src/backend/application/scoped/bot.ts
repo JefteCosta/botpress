@@ -70,7 +70,7 @@ export class Bot implements Trainable, Predictor {
   }
 
   public train = async (language: string, progressCallback: ProgressCallback): Promise<NLU.ModelId> => {
-    const { _engine, _languages, _modelRepo, _defService, _botId } = this
+    const { _engine, _languages, _defService, _botId } = this
 
     if (!_languages.includes(language)) {
       throw new BotDoesntSpeakLanguageError(_botId, language)
@@ -88,6 +88,8 @@ export class Bot implements Trainable, Predictor {
     this._trainingByLang[modelId.languageCode] = modelId
 
     await _engine.waitForTraining(modelId, password, progressCallback)
+
+    delete this._trainingByLang[modelId.languageCode]
 
     return modelId
   }
