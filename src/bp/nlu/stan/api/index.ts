@@ -13,7 +13,7 @@ import Logger from '../../../simple-logger'
 import { Stan } from '../application'
 import { TrainingNotFoundError, ModelNotFoundError, PreconditionError } from '../application/errors'
 
-import { validateCancelRequestInput, validatePredictInput, validateTrainInput } from './validation/validate'
+import { validatePredictInput, validateTrainInput, validatePassword } from './validation/validate'
 
 export interface APIOptions {
   host: string
@@ -123,14 +123,47 @@ export default async function(options: APIOptions, stan: Stan) {
     }
   })
 
+  router.get('/exists/:modelId', async (req, res) => {
+    try {
+      const { modelId: stringId } = req.params
+      const { password } = await validatePassword(req.body)
+
+      const modelId = NLUEngine.modelIdService.fromString(stringId)
+
+      const exists = await stan.hasModel(modelId, password)
+      res.send({ success: true, exists })
+    } catch (err) {
+      return mapError(res, err)
+    }
+  })
+
   router.post('/train/:modelId/cancel', async (req, res) => {
     try {
       const { modelId: stringId } = req.params
-      const { password } = await validateCancelRequestInput(req.body)
+      const { password } = await validatePassword(req.body)
 
       const modelId = NLUEngine.modelIdService.fromString(stringId)
 
       await stan.cancelTraining(modelId, password)
+      res.send({ success: true })
+    } catch (err) {
+      return mapError(res, err)
+    }
+  })
+
+  router.post('/detect-lang/:modelId', async (req, res) => {
+    try {
+      const { modelId: stringId } = req.params
+      const { utterances, password } = await validatePredictInput(req.body)
+
+      if (!_.isArray(utterances) || (options.batchSize > 0 && utterances.length > options.batchSize)) {
+        const errMessage = `Batch size of ${utterances.length} is larger than the allowed maximum batch size (${options.batchSize}).`
+        throw new PreconditionError(errMessage)
+      }
+
+      const modelId = NLUEngine.modelIdService.fromString(stringId)
+      const languages = await stan.detectLanguage(utterances, [{ modelId, password }]) // TODO: allow more than one modelId
+      return res.send({ success: true, languages })
     } catch (err) {
       return mapError(res, err)
     }

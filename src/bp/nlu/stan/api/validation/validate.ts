@@ -14,7 +14,7 @@ export async function validateTrainInput(rawInput: any): Promise<TrainInput> {
   }
 }
 
-export async function validateCancelRequestInput(rawInput: any): Promise<{ password: string }> {
+export async function validatePassword(rawInput: any): Promise<{ password: string }> {
   try {
     const validated: { password: string } = await validate(rawInput, CancelInputSchema, {})
     return validated

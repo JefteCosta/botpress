@@ -60,31 +60,30 @@ export class NLUApplication {
 
   public mountBot = async (botConfig: BotConfig) => {
     const { id: botId, languages } = botConfig
-    const { bot, defService, modelRepo } = await this._servicesFactory.makeBot(botConfig)
+    const { bot, defService } = await this._servicesFactory.makeBot(botConfig)
     this._botService.setBot(botId, bot)
 
-    const makeDirtyModelHandler = (cb: (trainId: TrainingId) => Promise<void>) => async (language: string) => {
-      const latestModelId = await defService.getLatestModelId(language)
-      if (await modelRepo.hasModel(latestModelId)) {
-        await bot.load(latestModelId)
-        return
-      }
-      return cb({ botId, language })
-    }
-
-    const loadOrSetTrainingNeeded = makeDirtyModelHandler((trainId: TrainingId) =>
-      this._trainingQueue.needsTraining(trainId)
-    )
-    defService.listenForDirtyModels(loadOrSetTrainingNeeded)
+    defService.listenForDirtyModels((language: string) => {
+      const trainId = { botId, language }
+      return this._trainingQueue.needsTraining(trainId)
+    })
 
     const trainingEnabled = !yn(process.env.BP_NLU_DISABLE_TRAINING)
-    const trainingHandler =
-      this._queueTrainingOnBotMount && trainingEnabled
-        ? (trainId: TrainingId) => this._trainingQueue.queueTraining(trainId)
-        : (trainId: TrainingId) => this._trainingQueue.needsTraining(trainId)
+    await Promise.each(languages, async lang => {
+      const latestModelId = await defService.getLatestModelId(lang)
+      const modelExists = await this._engine.hasModel(latestModelId, process.APP_SECRET)
+      if (modelExists) {
+        return
+      }
 
-    const loadModelOrQueue = makeDirtyModelHandler(trainingHandler)
-    await Promise.each(languages, lang => loadModelOrQueue(lang))
+      const trainId = { botId, language: lang }
+      if (this._queueTrainingOnBotMount && trainingEnabled) {
+        return this._trainingQueue.queueTraining(trainId)
+      }
+
+      return this._trainingQueue.needsTraining(trainId)
+    })
+
     await bot.mount()
   }
 

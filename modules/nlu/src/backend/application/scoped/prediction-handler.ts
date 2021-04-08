@@ -71,11 +71,7 @@ export class ScopedPredictionHandler {
 
   private async tryPredictInLanguage(textInput: string, language: string): Promise<EventUnderstanding | undefined> {
     if (!this.modelsByLang[language] || !this.engine.hasModel(this.modelsByLang[language], process.APP_SECRET)) {
-      const model = await this.fetchModel(language)
-      if (!model) {
-        return
-      }
-      this.modelsByLang[language] = model.id
+      return
     }
 
     const password = process.APP_SECRET
@@ -105,19 +101,6 @@ export class ScopedPredictionHandler {
       const ms = Date.now() - t0
       return { errored: true, language, ms }
     }
-  }
-
-  private async fetchModel(languageCode: string): Promise<Model | undefined> {
-    const { modelRepo: modelService } = this
-
-    const modelId = this.modelsByLang[languageCode]
-    if (modelId) {
-      return modelService.getModel(modelId)
-    }
-
-    const { specs } = await this.engine.getInfo()
-    const query = this.modelIdService.briefId({ specifications: specs, languageCode })
-    return modelService.getLatestModel(query)
   }
 
   private isEmpty(nluResults: EventUnderstanding | undefined): nluResults is undefined {

@@ -1,4 +1,5 @@
-import { ModelId } from 'common/nlu/engine'
+import axios, { AxiosInstance } from 'axios'
+import { ModelId, modelIdService } from 'common/nlu/engine'
 import { EngineInfo, TrainInput, PredictOutput, TrainingSession } from './typings'
 
 const TRAIN_PROGRESS_POLLING_INTERVAL = 500
@@ -6,18 +7,28 @@ const TRAIN_PROGRESS_POLLING_INTERVAL = 500
 // TODO: implement this
 
 export class StanClient {
+  private _client: AxiosInstance
+
+  constructor(private _stanEndpoint: string = 'http://localhost:3200') {
+    this._client = axios.create({
+      baseURL: this._stanEndpoint
+    })
+  }
+
   public async getInfo(): Promise<EngineInfo> {
-    return {} as EngineInfo
+    const { info } = await this._get('info', undefined)
+    return info
   }
 
   public async startTraining(trainInput: TrainInput): Promise<ModelId> {
-    return {} as ModelId
+    const { modelId } = await this._post('train', trainInput)
+    return modelIdService.fromString(modelId)
   }
 
   public async waitForTraining(modelId: ModelId, password: string, progressCb: (p: number) => void): Promise<void> {
     return new Promise(resolve => {
       const interval = setInterval(async () => {
-        const { status, progress } = await this.getTrainingStatus(modelId, password)
+        const { status, progress } = await this._getTrainingStatus(modelId, password)
 
         progressCb(progress)
 
@@ -29,24 +40,78 @@ export class StanClient {
     })
   }
 
-  private async getTrainingStatus(modelId: ModelId, password: string): Promise<TrainingSession> {
-    return {} as TrainingSession
+  private async _getTrainingStatus(modelId: ModelId, password: string): Promise<TrainingSession> {
+    const stringId = modelIdService.toString(modelId)
+    const endpoint = `train/${stringId}`
+    const { session } = await this._get(endpoint, { password })
+    return session
   }
 
-  public async cancelTraining(modelId: ModelId, password: string): Promise<void> {}
+  public async cancelTraining(modelId: ModelId, password: string): Promise<void> {
+    const stringId = modelIdService.toString(modelId)
+    const endpoint = `train/${stringId}/cancel`
+    return this._get(endpoint, { password })
+  }
 
   public async hasModel(modelId: ModelId, password: string): Promise<boolean> {
-    return true
+    const stringId = modelIdService.toString(modelId)
+    const endpoint = `exists/${stringId}`
+    const { exists } = await this._get(endpoint, { password })
+    return exists
   }
 
   public async detectLanguage(
     utterances: string[],
     models: { modelId: ModelId; password: string }[]
   ): Promise<string[]> {
-    return []
+    const { modelId, password } = models[0]
+    const stringId = modelIdService.toString(modelId)
+    const endpoint = `detect-lang/${stringId}`
+    const { languages } = await this._post(endpoint, { utterances, password })
+    return languages
   }
 
   public async predict(utterances: string[], modelId: ModelId, password: string): Promise<PredictOutput[]> {
-    return []
+    const stringId = modelIdService.toString(modelId)
+    const endpoint = `predict/${stringId}`
+    const { predictions } = await this._post(endpoint, { utterances, password })
+    return predictions
+  }
+
+  private async _get(endpoint: string, queryParams: any) {
+    return this._wrapWithTryCatch(async () => {
+      const { data } = await this._client.get(endpoint, { params: queryParams })
+      const { success } = data
+      if (!success) {
+        this._throwError(data)
+      }
+      return data
+    })
+  }
+
+  private async _post(endpoint: string, body: any) {
+    return this._wrapWithTryCatch(async () => {
+      const { data } = await this._client.post(endpoint, body)
+      const { success } = data
+      if (!success) {
+        this._throwError(data)
+      }
+      return data
+    })
+  }
+
+  private async _wrapWithTryCatch<T>(fn: () => Promise<T>) {
+    try {
+      const res = await fn()
+      return res
+    } catch (err) {
+      const errMsg = `The following errored occured when calling standalone NLU: [${err}]`
+      console.log(errMsg)
+    }
+  }
+
+  private _throwError(response: { err: string | undefined }): never {
+    const { err } = response
+    throw new Error(`${err}`)
   }
 }

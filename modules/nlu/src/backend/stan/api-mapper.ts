@@ -4,7 +4,10 @@ import {
   PredictOutput as BpPredictOutput,
   SlotDefinition as BpSlotDefinition,
   IntentDefinition as BpIntentDefinition,
-  EntityDefinition
+  EntityDefinition,
+  ContextPrediction as BpContextPrediction,
+  Slot as BpSlotPrediction,
+  Entity as BpEntity
 } from 'common/nlu/engine'
 
 import _ from 'lodash'
@@ -14,8 +17,18 @@ import {
   ListEntityDefinition,
   PatternEntityDefinition,
   SlotDefinition as StanSlotDefinition,
-  IntentDefinition as StanIntentDefinition
+  IntentDefinition as StanIntentDefinition,
+  IntentPrediction as StanIntentPrediction,
+  SlotPrediction as StanSlotPrediction,
+  ContextPrediction as StanContextPrediction,
+  EntityPrediction as StanEntityPrediction
 } from './typings'
+
+/**
+ * ################
+ * ### Training ###
+ * ################
+ */
 
 export const isPatternEntity = (e: EntityDefinition) => {
   return e.type === 'pattern'
@@ -29,19 +42,6 @@ const mapInputSlot = (slot: BpSlotDefinition): StanSlotDefinition => {
   }
 }
 
-// const makeIntentMapper = (ctx: string, lang: string) => (intent: StanIntentDefinition): BpIntentDefinition => {
-//   const { name, utterances, slots } = intent
-
-//   return {
-//     contexts: [ctx],
-//     name,
-//     utterances: {
-//       [lang]: utterances
-//     },
-//     slots: slots.map(mapInputSlot)
-//   }
-// }
-
 const makeIntentMapper = (lang: string) => (intent: BpIntentDefinition): StanIntentDefinition => {
   const { contexts, name, utterances, slots } = intent
   return {
@@ -51,18 +51,6 @@ const makeIntentMapper = (lang: string) => (intent: BpIntentDefinition): StanInt
     slots: slots.map(mapInputSlot)
   }
 }
-
-// const mapList = (listDef: ListEntityDefinition): EntityDefinition => {
-//   const { name, fuzzy, values } = listDef
-
-//   return {
-//     id: name,
-//     name,
-//     type: 'list',
-//     fuzzy,
-//     occurrences: values
-//   }
-// }
 
 const mapList = (listDef: EntityDefinition): ListEntityDefinition => {
   const { name, fuzzy, occurrences, examples } = listDef
@@ -74,18 +62,6 @@ const mapList = (listDef: EntityDefinition): ListEntityDefinition => {
     values: occurrences!
   }
 }
-
-// const mapPattern = (patternDef: PatternEntityDefinition): EntityDefinition => {
-//   const { name, regex, case_sensitive } = patternDef
-
-//   return {
-//     id: name,
-//     name,
-//     type: 'pattern',
-//     pattern: regex,
-//     matchCase: case_sensitive
-//   }
-// }
 
 const mapPattern = (patternDef: EntityDefinition): PatternEntityDefinition => {
   const { name, pattern, matchCase } = patternDef
@@ -124,6 +100,77 @@ export const mapTrainInput = (
   return stanTrainInput
 }
 
+/**
+ * ##################
+ * ### Prediction ###
+ * ##################
+ */
+
+function mapEntity(entity: StanEntityPrediction): BpEntity {
+  const { name, type, start, end, confidence, source, value, unit } = entity
+
+  return {
+    name,
+    type,
+    meta: {
+      confidence,
+      start,
+      end,
+      sensitive: false,
+      source
+    },
+    data: {
+      unit: unit!,
+      value
+    }
+  }
+}
+
+function mapIntent(intent: StanIntentPrediction): BpContextPrediction['intents'][0] {
+  const { confidence, slots, extractor, name } = intent
+  return {
+    label: name,
+    confidence,
+    extractor,
+    slots: _(slots)
+      .map(mapOutputSlot)
+      .keyBy(s => s.name)
+      .value()
+  }
+}
+
+function mapOutputSlot(slot: StanSlotPrediction): BpSlotPrediction {
+  const { confidence, start, end, value, source, name, entity } = slot
+
+  return {
+    confidence,
+    start,
+    end,
+    entity: mapEntity(entity!),
+    name,
+    source,
+    value
+  }
+}
+
+function mapContext(context: StanContextPrediction): BpContextPrediction {
+  const { confidence, oos, intents } = context
+
+  return {
+    confidence,
+    oos,
+    intents: intents.map(mapIntent)
+  }
+}
+
 export const mapPredictOutput = (predictOutput: StanPredictOutput): BpPredictOutput => {
-  return {} as BpPredictOutput
+  const { contexts, spellChecked, entities } = predictOutput
+  return {
+    predictions: _(contexts)
+      .keyBy(c => c.name)
+      .mapValues(mapContext)
+      .value(),
+    spellChecked,
+    entities: entities.map(mapEntity)
+  }
 }

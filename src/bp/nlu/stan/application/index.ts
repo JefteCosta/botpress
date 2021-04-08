@@ -66,7 +66,7 @@ export class Stan implements IStan {
 
       const stringId = NLUEngine.modelIdService.toString(modelId)
       session = {
-        key: stringId,
+        key: stringId, // this is wrong
         status: 'done',
         progress: 1,
         language: modelId.languageCode

@@ -66,13 +66,7 @@ export class Bot implements Trainable, Predictor {
   }
 
   public load = async (modelId: NLU.ModelId) => {
-    const model = await this._modelRepo.getModel(modelId)
-    if (!model) {
-      const stringId = this._modelIdService.toString(modelId)
-      throw new Error(`Model ${stringId} not found on file system.`)
-    }
-
-    this._modelsByLang[modelId.languageCode] = model.id
+    this._modelsByLang[modelId.languageCode] = modelId
   }
 
   public train = async (language: string, progressCallback: ProgressCallback): Promise<NLU.ModelId> => {
@@ -95,9 +89,6 @@ export class Bot implements Trainable, Predictor {
 
     await _engine.waitForTraining(modelId, password, progressCallback)
 
-    const modelsOfLang = await _modelRepo.listModels({ languageCode: language })
-    await _modelRepo.pruneModels(modelsOfLang, { toKeep: 2 })
-
     return modelId
   }
 
@@ -106,7 +97,7 @@ export class Bot implements Trainable, Predictor {
       throw new BotDoesntSpeakLanguageError(this._botId, language)
     }
     if (!this._trainingByLang[language]) {
-      throw new Error(`No current training for language ${language}`) // TODO: make sure this doesnt happend
+      return
     }
 
     const password = process.APP_SECRET
