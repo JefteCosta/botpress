@@ -7,7 +7,6 @@ import { BotDoesntSpeakLanguageError } from '../errors'
 import { Predictor, ProgressCallback, Trainable, I } from '../typings'
 
 import { IDefinitionsService } from './definitions-service'
-import { IModelRepository } from './infrastructure/model-repository'
 import { ScopedPredictionHandler } from './prediction-handler'
 
 interface BotDefinition {
@@ -31,7 +30,6 @@ export class Bot implements Trainable, Predictor {
   constructor(
     bot: BotDefinition,
     private _engine: StanClient,
-    private _modelRepo: IModelRepository,
     private _defService: IDefinitionsService,
     private _modelIdService: typeof NLU.modelIdService,
     private _logger: sdk.Logger
@@ -45,7 +43,6 @@ export class Bot implements Trainable, Predictor {
         defaultLanguage: this._defaultLanguage
       },
       _engine,
-      _modelRepo,
       this._modelIdService,
       this._modelsByLang,
       this._logger
@@ -53,14 +50,12 @@ export class Bot implements Trainable, Predictor {
   }
 
   public async mount() {
-    await this._modelRepo.initialize()
     await this._defService.initialize()
   }
 
   public async unmount() {
     await this._defService.teardown()
     for (const [_botId, modelId] of Object.entries(this._modelsByLang)) {
-      // this._engine.unloadModel(modelId)
       delete this._modelsByLang[modelId.languageCode]
     }
   }

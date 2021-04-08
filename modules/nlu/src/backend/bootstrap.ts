@@ -10,7 +10,6 @@ import { ScopedServicesFactory } from './application/bot-factory'
 import { BotService } from './application/bot-service'
 import { DistributedTrainingQueue } from './application/distributed-training-queue'
 import { ScopedDefinitionsRepository } from './application/scoped/infrastructure/definitions-repository'
-import { ScopedModelRepository } from './application/scoped/infrastructure/model-repository'
 import { TrainingRepository } from './application/training-repo'
 import { BotDefinition } from './application/typings'
 import { StanClient } from './stan/client'
@@ -52,19 +51,10 @@ export async function bootStrap(bp: typeof sdk): Promise<NLUApplication> {
 
   const botService = new BotService()
 
-  const makeModelRepo = (bot: BotDefinition) =>
-    new ScopedModelRepository(bot, NLU.modelIdService, bp.ghost.forBot(bot.botId))
-
   const makeDefRepo = (bot: BotDefinition) => new ScopedDefinitionsRepository(bot, bp)
 
   const stanClient = new StanClient()
-  const servicesFactory = new ScopedServicesFactory(
-    stanClient,
-    bp.logger,
-    NLU.modelIdService,
-    makeDefRepo,
-    makeModelRepo
-  )
+  const servicesFactory = new ScopedServicesFactory(stanClient, bp.logger, NLU.modelIdService, makeDefRepo)
 
   const trainRepo = new TrainingRepository(bp.database)
   const trainingQueue = new DistributedTrainingQueue(

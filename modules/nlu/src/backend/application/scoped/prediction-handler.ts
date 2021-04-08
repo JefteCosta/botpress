@@ -7,7 +7,6 @@ import { StanClient } from 'src/backend/stan/client'
 import mergeSpellChecked from '../../election/spellcheck-handler'
 import { mapPredictOutput } from '../../stan/api-mapper'
 import { EventUnderstanding } from '../typings'
-import { IModelRepository } from './infrastructure/model-repository'
 
 interface BotDefinition {
   defaultLanguage: string
@@ -20,7 +19,6 @@ export class ScopedPredictionHandler {
   constructor(
     bot: BotDefinition,
     private engine: StanClient,
-    private modelRepo: IModelRepository,
     private modelIdService: ModelIdService,
     private modelsByLang: _.Dictionary<ModelId>,
     private logger: sdk.Logger

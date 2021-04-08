@@ -8,17 +8,14 @@ import pickSeed from './pick-seed'
 import { Bot, IBot } from './scoped/bot'
 import { ScopedDefinitionsService, IDefinitionsService } from './scoped/definitions-service'
 import { IDefinitionsRepository } from './scoped/infrastructure/definitions-repository'
-import { IModelRepository } from './scoped/infrastructure/model-repository'
 import { BotDefinition, BotConfig, I } from './typings'
 
 export interface ScopedServices {
   bot: IBot
   defService: IDefinitionsService
-  modelRepo: IModelRepository
 }
 
 export type DefinitionRepositoryFactory = (botDef: BotDefinition) => IDefinitionsRepository
-export type ModelRepositoryFactory = (botDef: BotDefinition) => IModelRepository
 
 export interface ConfigResolver {
   getBotById(botId: string): Promise<BotConfig | undefined>
@@ -31,8 +28,7 @@ export class ScopedServicesFactory {
     private _engine: StanClient,
     private _logger: sdk.Logger,
     private _modelIdService: ModelIdService,
-    private _makeDefRepo: DefinitionRepositoryFactory,
-    private _makeModelRepo: ModelRepositoryFactory
+    private _makeDefRepo: DefinitionRepositoryFactory
   ) {}
 
   public makeBot = async (botConfig: BotConfig): Promise<ScopedServices> => {
@@ -54,15 +50,13 @@ export class ScopedServicesFactory {
       seed: pickSeed(botConfig)
     }
 
-    const modelRepo = this._makeModelRepo(botDefinition)
     const defRepo = this._makeDefRepo(botDefinition)
 
     const defService = new ScopedDefinitionsService(botDefinition, this._engine, defRepo, this._modelIdService)
 
-    const bot = new Bot(botDefinition, this._engine, modelRepo, defService, this._modelIdService, this._logger)
+    const bot = new Bot(botDefinition, this._engine, defService, this._modelIdService, this._logger)
 
     return {
-      modelRepo,
       defService,
       bot
     }
