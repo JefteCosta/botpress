@@ -30,8 +30,16 @@ import {
  * ################
  */
 
-export const isPatternEntity = (e: EntityDefinition) => {
+const isListEntity = (e: EntityDefinition) => {
+  return e.type === 'list'
+}
+
+const isPatternEntity = (e: EntityDefinition) => {
   return e.type === 'pattern'
+}
+
+const isCustomEntity = (e: EntityDefinition) => {
+  return isListEntity(e) || isPatternEntity(e)
 }
 
 const mapInputSlot = (slot: BpSlotDefinition): StanSlotDefinition => {
@@ -85,7 +93,7 @@ export const mapTrainInput = (
     .uniq()
     .value()
 
-  const entities = entityDefs.map(e => (isPatternEntity(e) ? mapPattern(e) : mapList(e)))
+  const entities = entityDefs.filter(isCustomEntity).map(e => (isPatternEntity(e) ? mapPattern(e) : mapList(e)))
 
   const intentMapper = makeIntentMapper(languageCode)
 

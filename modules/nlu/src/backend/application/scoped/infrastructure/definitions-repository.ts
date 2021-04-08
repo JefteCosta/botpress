@@ -26,11 +26,12 @@ export class ScopedDefinitionsRepository {
   public async getTrainDefinitions(): Promise<TrainDefinitions> {
     const nluRepository = await createApi(this._bp, this._botId)
     const intentDefs = await nluRepository.fetchIntentsWithQNAs()
-    const entityDefs = await nluRepository.fetchEntities()
+    const allEntityDefs = await nluRepository.fetchEntities()
+    const customEntityDef = allEntityDefs.filter(e => e.type !== 'system')
 
     return {
       intentDefs,
-      entityDefs
+      entityDefs: customEntityDef
     }
   }
 
