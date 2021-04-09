@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios'
 import modelIdService from './model-id-service'
-import { EngineInfo, TrainInput, PredictOutput, TrainingSession, ModelId } from './typings'
+import { EngineInfo, TrainInput, PredictOutput, TrainingProgress, ModelId } from './typings'
 
 const TRAIN_PROGRESS_POLLING_INTERVAL = 500
 
@@ -40,7 +40,7 @@ export class StanClient {
     })
   }
 
-  private async _getTrainingStatus(modelId: ModelId, password: string): Promise<TrainingSession> {
+  private async _getTrainingStatus(modelId: ModelId, password: string): Promise<TrainingProgress> {
     const stringId = modelIdService.toString(modelId)
     const endpoint = `train/${stringId}`
     const { session } = await this._get(endpoint, { password })

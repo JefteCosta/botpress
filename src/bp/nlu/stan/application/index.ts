@@ -2,7 +2,7 @@ import { Logger } from 'botpress/sdk'
 import _ from 'lodash'
 import * as NLUEngine from 'nlu/engine'
 
-import { PredictOutput, TrainInput, EngineInfo, TrainingSession, ModelId } from '../../typings_v1'
+import { PredictOutput, TrainInput, EngineInfo, ModelId, TrainingProgress } from '../../typings_v1'
 import { BpPredictOutput, mapPredictOutput } from './api-mapper'
 import { ModelNotFoundError, TrainingNotFoundError } from './errors'
 import ModelRepository from './model-repo'
@@ -54,7 +54,7 @@ export class Stan implements IStan {
     return modelId
   }
 
-  public async getTrainingStatus(modelId: ModelId, password: string): Promise<TrainingSession> {
+  public async getTrainingStatus(modelId: ModelId, password: string): Promise<TrainingProgress> {
     let session = this.trainSessionService.getTrainingSession(modelId, password)
 
     if (!session) {
@@ -64,12 +64,9 @@ export class Stan implements IStan {
         throw new ModelNotFoundError(modelId)
       }
 
-      const stringId = NLUEngine.modelIdService.toString(modelId)
       session = {
-        key: stringId, // this is wrong
         status: 'done',
-        progress: 1,
-        language: modelId.languageCode
+        progress: 1
       }
     }
 
@@ -84,10 +81,11 @@ export class Stan implements IStan {
   }
 
   public async cancelTraining(modelId: ModelId, password: string): Promise<void> {
+    const stringId = NLUEngine.modelIdService.toString(modelId)
     const session = this.trainSessionService.getTrainingSession(modelId, password)
 
     if (session?.status === 'training') {
-      await this.engine.cancelTraining(session.key)
+      await this.engine.cancelTraining(stringId)
       return
     }
 

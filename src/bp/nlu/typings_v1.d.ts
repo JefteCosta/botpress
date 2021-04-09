@@ -115,10 +115,8 @@ export interface SlotPrediction {
  */
 export type TrainingStatus = 'done' | 'training-pending' | 'training' | 'canceled' | 'errored'
 
-export interface TrainingSession {
-  key: string // TODO: rm this
+export interface TrainingProgress {
   status: TrainingStatus
-  language: string // TODO: rm this
   progress: number
 }
 

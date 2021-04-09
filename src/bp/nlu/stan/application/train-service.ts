@@ -25,7 +25,7 @@ export default class TrainService {
     const stringId = NLUEngine.modelIdService.toString(modelId)
     this.logger.info(`[${stringId}] Training Started.`)
 
-    const ts = this.trainSessionService.makeTrainingSession(modelId, password, language)
+    const ts = this.trainSessionService.makeTrainingSession()
     this.trainSessionService.setTrainingSession(modelId, password, ts)
 
     const progressCallback = (progress: number) => {
@@ -43,7 +43,7 @@ export default class TrainService {
         language,
         seed: nluSeed
       }
-      const model = await this.engine.train(ts.key, trainSet, { progressCallback })
+      const model = await this.engine.train(stringId, trainSet, { progressCallback })
       this.logger.info(`[${stringId}] Training Done.`)
 
       await this.modelRepo.saveModel(model, password)

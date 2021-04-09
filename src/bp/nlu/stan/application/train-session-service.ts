@@ -2,26 +2,24 @@ import crypto from 'crypto'
 import LRUCache from 'lru-cache'
 
 import modelIdService from 'nlu/engine/model-id-service'
-import { TrainingSession, ModelId } from '../../typings_v1'
+import { TrainingProgress, ModelId } from '../../typings_v1'
 
 export default class TrainSessionService {
   private trainSessions: {
-    [key: string]: TrainingSession
+    [key: string]: TrainingProgress
   } = {}
 
   // training sessions of this cache will eventually be kicked out so there's no memory leak
-  private releasedTrainSessions = new LRUCache<string, TrainingSession>(1000)
+  private releasedTrainSessions = new LRUCache<string, TrainingProgress>(1000)
 
   constructor() {}
 
-  makeTrainingSession = (modelId: ModelId, password: string, language: string): TrainingSession => ({
-    key: this._makeTrainSessionKey(modelId, password),
+  makeTrainingSession = (): TrainingProgress => ({
     status: 'training-pending',
-    progress: 0,
-    language
+    progress: 0
   })
 
-  getTrainingSession(modelId: ModelId, password: string): TrainingSession | undefined {
+  getTrainingSession(modelId: ModelId, password: string): TrainingProgress | undefined {
     const key = this._makeTrainSessionKey(modelId, password)
     const ts = this.trainSessions[key]
     if (ts) {
@@ -30,7 +28,7 @@ export default class TrainSessionService {
     return this.releasedTrainSessions.get(key)
   }
 
-  setTrainingSession(modelId: ModelId, password: string, trainSession: TrainingSession) {
+  setTrainingSession(modelId: ModelId, password: string, trainSession: TrainingProgress) {
     const key = this._makeTrainSessionKey(modelId, password)
     if (this.releasedTrainSessions.get(key)) {
       this.releasedTrainSessions.del(key)

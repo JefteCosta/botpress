@@ -1,4 +1,4 @@
-import { EngineInfo, TrainInput, TrainingSession, PredictOutput, ModelId } from '../../typings_v1'
+import { EngineInfo, TrainInput, PredictOutput, ModelId, TrainingProgress } from '../../typings_v1'
 
 export interface ModelPassword {
   modelId: ModelId
@@ -9,7 +9,7 @@ export interface Stan {
   getInfo: () => EngineInfo
 
   startTraining: (trainInput: TrainInput) => ModelId
-  getTrainingStatus: (modelId: ModelId, password: string) => Promise<TrainingSession>
+  getTrainingStatus: (modelId: ModelId, password: string) => Promise<TrainingProgress>
   cancelTraining: (modelId: ModelId, password: string) => Promise<void>
 
   hasModel: (modelId: ModelId, password: string) => Promise<boolean>
