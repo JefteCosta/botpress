@@ -9,3 +9,5 @@ export class BotDoesntSpeakLanguageError extends Error {
     super(`Bot ${botId} does not speak ${language}.`)
   }
 }
+
+export class TrainingCanceledError extends Error {}

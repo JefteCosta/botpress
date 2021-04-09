@@ -23,7 +23,7 @@ export type ProgressCallback = (p: number) => Promise<void>
 
 export interface Trainable {
   train(language: string, progressCallback: ProgressCallback): Promise<ModelId>
-  load(modelId: ModelId): Promise<void>
+  setCurrentModel(modelId: ModelId): Promise<void>
   cancelTraining(language: string): Promise<void>
 }
 

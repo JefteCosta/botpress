@@ -12,14 +12,13 @@ export class DistributedTrainingQueue extends TrainingQueue {
 
   constructor(
     _trainingRepo: ITrainingRepository,
-    _errors: any,
     _logger: sdk.Logger,
     _trainerService: TrainerService,
     private _distributed: typeof sdk.distributed,
     _onChange: TrainingListener,
     options: Partial<TrainingQueueOptions> = {}
   ) {
-    super(_trainingRepo, _errors, _logger, _trainerService, _onChange, options)
+    super(_trainingRepo, _logger, _trainerService, _onChange, options)
   }
 
   public async initialize() {

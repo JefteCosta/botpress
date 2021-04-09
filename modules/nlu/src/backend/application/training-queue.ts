@@ -5,6 +5,7 @@ import moment from 'moment'
 import ms from 'ms'
 import nanoid from 'nanoid'
 import { ModelId } from '../stan/typings'
+import { TrainingCanceledError } from './errors'
 import { ITrainingRepository, ITrainingTransactionContext } from './training-repo'
 import { TrainingId, TrainerService, TrainingListener, TrainingState, TrainingSession, I } from './typings'
 
@@ -33,7 +34,6 @@ export class TrainingQueue {
 
   constructor(
     private _trainingRepo: ITrainingRepository,
-    private _errors: any,
     private _logger: sdk.Logger,
     private _trainerService: TrainerService,
     private _onChange: TrainingListener,
@@ -143,7 +143,7 @@ export class TrainingQueue {
   protected async loadModel(botId: string, modelId: ModelId): Promise<void> {
     const trainer = this._trainerService.getBot(botId)
     if (trainer) {
-      return trainer.load(modelId)
+      return trainer.setCurrentModel(modelId)
     }
   }
 
@@ -229,18 +229,12 @@ export class TrainingQueue {
   private _handleTrainError = async (trainId: TrainingId, err: Error) => {
     const { botId } = trainId
 
-    if (this._errors.isTrainingCanceled(err)) {
+    if (err instanceof TrainingCanceledError) {
       return this._trainingRepo.inTransaction(async trx => {
         this._logger.forBot(botId).info(`Training ${this._toString(trainId)} canceled`)
         const newState = this._fillSate({ status: 'needs-training' })
         return this._update(trainId, newState, trx)
       }, '_handleTrainError: canceled')
-    }
-
-    if (this._errors.isTrainingAlreadyStarted(err)) {
-      // This should not happend
-      this._logger.forBot(botId).warn(`Training ${this._toString(trainId)} already started`)
-      return
     }
 
     return this._trainingRepo.inTransaction(async trx => {

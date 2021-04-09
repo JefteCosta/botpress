@@ -68,7 +68,7 @@ export class ScopedPredictionHandler {
   }
 
   private async tryPredictInLanguage(textInput: string, language: string): Promise<EventUnderstanding | undefined> {
-    if (!this.modelsByLang[language] || !this.engine.hasModel(this.modelsByLang[language], process.APP_SECRET)) {
+    if (!this.modelsByLang[language]) {
       return
     }
 

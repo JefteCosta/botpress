@@ -1,14 +1,14 @@
 import axios, { AxiosInstance } from 'axios'
+import { TrainingCanceledError } from '../application/errors'
 import modelIdService from './model-id-service'
 import { EngineInfo, TrainInput, PredictOutput, TrainingProgress, ModelId } from './typings'
 
 const TRAIN_PROGRESS_POLLING_INTERVAL = 500
 
-// TODO: implement this
-
 export class StanClient {
   private _client: AxiosInstance
 
+  // TODO: pass this as a config
   constructor(private _stanEndpoint: string = 'http://localhost:3200') {
     this._client = axios.create({
       baseURL: this._stanEndpoint
@@ -26,15 +26,28 @@ export class StanClient {
   }
 
   public async waitForTraining(modelId: ModelId, password: string, progressCb: (p: number) => void): Promise<void> {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
       const interval = setInterval(async () => {
         const { status, progress } = await this._getTrainingStatus(modelId, password)
 
         progressCb(progress)
 
-        if (status === 'done' || status === 'errored') {
+        if (status === 'done') {
           clearInterval(interval)
           resolve()
+          return
+        }
+
+        if (status === 'canceled') {
+          clearInterval(interval)
+          reject(new TrainingCanceledError())
+          return
+        }
+
+        if (status === 'errored') {
+          clearInterval(interval)
+          reject(new Error('Error during training.')) // TODO: find out when this happends and try sending the actual message
+          return
         }
       }, TRAIN_PROGRESS_POLLING_INTERVAL)
     })

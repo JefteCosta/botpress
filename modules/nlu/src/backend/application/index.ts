@@ -73,7 +73,7 @@ export class NLUApplication {
       const latestModelId = await defService.getLatestModelId(lang)
       const modelExists = await this._engine.hasModel(latestModelId, process.APP_SECRET)
       if (modelExists) {
-        await bot.load(latestModelId)
+        await bot.setCurrentModel(latestModelId)
         return
       }
 

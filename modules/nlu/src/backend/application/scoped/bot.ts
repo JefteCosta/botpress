@@ -62,7 +62,7 @@ export class Bot implements Trainable, Predictor {
     }
   }
 
-  public load = async (modelId: ModelId) => {
+  public setCurrentModel = async (modelId: ModelId) => {
     this._modelsByLang[modelId.languageCode] = modelId
   }
 
@@ -75,7 +75,7 @@ export class Bot implements Trainable, Predictor {
 
     const trainSet = await _defService.getTrainSet(language)
 
-    const previousModel = this._modelsByLang[language]
+    // const previousModel = this._modelsByLang[language]
 
     const password = process.APP_SECRET
     const stanTrainInput = mapTrainInput(trainSet, password)
@@ -105,9 +105,5 @@ export class Bot implements Trainable, Predictor {
   public predict = async (textInput: string, anticipatedLanguage?: string) => {
     const { _predictor, _defaultLanguage } = this
     return _predictor.predict(textInput, anticipatedLanguage ?? _defaultLanguage)
-  }
-
-  private _makeTrainingId = (language: string) => {
-    return `${this._botId}:${language}`
   }
 }
