@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from 'axios'
+import * as sdk from 'botpress/sdk'
 import { TrainingCanceledError } from '../application/errors'
 import modelIdService from './model-id-service'
 import { EngineInfo, TrainInput, PredictOutput, TrainingProgress, ModelId } from './typings'
@@ -9,7 +10,7 @@ export class StanClient {
   private _client: AxiosInstance
 
   // TODO: pass this as a config
-  constructor(private _stanEndpoint: string = 'http://localhost:3200') {
+  constructor(private _logger: sdk.Logger, private _stanEndpoint: string = 'http://localhost:3200') {
     this._client = axios.create({
       baseURL: this._stanEndpoint
     })
@@ -63,7 +64,7 @@ export class StanClient {
   public async cancelTraining(modelId: ModelId, password: string): Promise<void> {
     const stringId = modelIdService.toString(modelId)
     const endpoint = `train/${stringId}/cancel`
-    return this._get(endpoint, { password })
+    return this._post(endpoint, { password })
   }
 
   public async hasModel(modelId: ModelId, password: string): Promise<boolean> {
@@ -116,7 +117,7 @@ export class StanClient {
       return res
     } catch (err) {
       const errMsg = `The following errored occured when calling standalone NLU: [${err}]`
-      console.log(errMsg)
+      this._logger.error(errMsg)
     }
   }
 

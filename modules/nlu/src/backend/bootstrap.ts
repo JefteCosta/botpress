@@ -37,7 +37,7 @@ export async function bootStrap(bp: typeof sdk): Promise<NLUApplication> {
 
   const makeDefRepo = (bot: BotDefinition) => new ScopedDefinitionsRepository(bot, bp)
 
-  const stanClient = new StanClient()
+  const stanClient = new StanClient(bp.logger)
   const servicesFactory = new ScopedServicesFactory(stanClient, bp.logger, modelIdService, makeDefRepo)
 
   const trainRepo = new TrainingRepository(bp.database)
