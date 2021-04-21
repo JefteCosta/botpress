@@ -390,6 +390,7 @@ declare module 'botpress/sdk' {
 
       export class Predictor {
         constructor(model: string)
+        initialize(): Promise<void>
         predict(coordinates: number[]): Promise<Prediction[]>
         isLoaded(): boolean
         getLabels(): string[]
