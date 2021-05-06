@@ -1,9 +1,14 @@
 import { Logger, ModuleEntryPoint } from 'botpress/sdk'
+import { ObjectCache } from 'common/object-cache'
+import { BotpressAPIProvider } from 'core/app/api'
+import { container } from 'core/app/inversify/app.inversify'
+import { TYPES } from 'core/app/types'
 import { GhostService } from 'core/bpfs'
 import fs from 'fs'
 import defaultJsonBuilder from 'json-schema-defaults'
 import _ from 'lodash'
 import { Memoize } from 'lodash-decorators'
+import LRU from 'lru-cache'
 import path from 'path'
 import { VError } from 'verror'
 import yn from 'yn'
@@ -23,18 +28,29 @@ export type ModuleConfig = Dic<any>
  */
 export class ConfigReader {
   private modules = new Map<string, ModuleEntryPoint>()
+  private moduleConfigCache: LRU<string, any>
+  private bp: BotpressAPIProvider | undefined
 
-  constructor(private logger: Logger, modules: ModuleEntryPoint[], private ghost: GhostService) {
+  constructor(
+    private logger: Logger,
+    modules: ModuleEntryPoint[],
+    private ghost: GhostService,
+    private cache: ObjectCache
+  ) {
     for (const module of modules) {
       const name = _.get(module, 'definition.name', '').toLowerCase()
       if (name.length) {
         this.modules.set(name, module)
       }
     }
+    this.moduleConfigCache = new LRU()
+    this._listenForModuleConfigCacheInvalidation()
   }
 
   public async initialize() {
     await this.bootstrapGlobalConfigurationFiles()
+    // @ts-ignore
+    this.bp = await container.get<BotpressAPIProvider>(TYPES.BotpressAPIProvider).create('ConfigReader', 'core')
   }
 
   @Memoize()
@@ -172,21 +188,65 @@ export class ConfigReader {
     return config
   }
 
-  @Memoize()
-  public async getGlobal(moduleId: string): Promise<ModuleConfig> {
-    return this.getMerged(moduleId)
+  private async getCachedOrFresh(key, getFresh: { fn: (...args) => any; args: any[] }) {
+    let config
+    if (!this.moduleConfigCache.has(key)) {
+      console.log('Get Fresh| ', getFresh.fn.name, '| args ' + JSON.stringify(getFresh.args))
+      config = await getFresh.fn.call(this, ...getFresh.args)
+      this.moduleConfigCache.set(key, config)
+    } else {
+      console.log('Get From Cache', getFresh.fn.name, '| args ' + JSON.stringify(getFresh.args))
+      config = this.moduleConfigCache.get(key) || {}
+    }
+    return config
   }
 
-  // Don't @Memoize() this fn. It only memoizes on the first argument
-  // https://github.com/steelsojka/lodash-decorators/blob/master/src/memoize.ts#L15
+  public async getGlobal(moduleId: string): Promise<ModuleConfig> {
+    console.log('Get For global  | ' + moduleId)
+    return this.getCachedOrFresh(moduleId, { fn: this.getMerged, args: [moduleId] })
+  }
+
   public getForBot(moduleId: string, botId: string, ignoreGlobal?: boolean): Promise<ModuleConfig> {
     const cacheKey = `${moduleId}//${botId}//${!!ignoreGlobal}`
-    return this.getForBotMemoized(cacheKey)
+    console.log('Get For bot  | ' + cacheKey)
+    return this.getCachedOrFresh(cacheKey, { fn: this.getMerged, args: [moduleId, botId, yn(!!ignoreGlobal)] })
   }
 
-  @Memoize()
-  public getForBotMemoized(cacheKey: string): Promise<ModuleConfig> {
-    const [moduleId, botId, ignoreGlobal] = cacheKey.split('//')
-    return this.getMerged(moduleId, botId, yn(ignoreGlobal))
+  private _listenForModuleConfigCacheInvalidation() {
+    async function deleteCacheStartingWith(prefix: string, cache: LRU<string, any>): Promise<void> {
+      const keys = cache.keys().filter(x => {
+        return x.startsWith(prefix)
+      })
+      keys.forEach(x => cache.del(x))
+    }
+
+    this.cache.events.on('invalidation', async key => {
+      try {
+        console.log('invalidate: ' + key)
+        const isGlobalModuleConfig = key.indexOf('data/global/config') !== -1
+        const matches = !isGlobalModuleConfig
+          ? key.match(/^([A-Z0-9-_]+)::data\/bots\/([A-Z0-9-_]+)\/config\/([\s\S]+([A-Z0-9-_])+\.json)/i)
+          : key.match(/^([A-Z0-9-_]+)::data\/global\/config\/([\s\S]+([A-Z0-9-_])+\.json)/i)
+        const type = matches && matches.length >= 2 && matches[1]
+
+        type && console.log({ type, isGlobalModuleConfig })
+
+        if (type && (type === 'file' || type === 'object')) {
+          const moduleId = matches[isGlobalModuleConfig ? 2 : 3].replace('.json', '')
+
+          if (isGlobalModuleConfig) {
+            console.log('Delete global for module ' + moduleId)
+            await deleteCacheStartingWith(moduleId, this.moduleConfigCache)
+          } else {
+            const botId = matches[2]
+            console.log('Delete for bot ' + botId + ' and module ' + moduleId)
+            await deleteCacheStartingWith(`${moduleId}//${botId}//true`, this.moduleConfigCache)
+            await deleteCacheStartingWith(`${moduleId}//${botId}//false`, this.moduleConfigCache)
+          }
+        }
+      } catch (err) {
+        this.logger.error('Error invalidating config cache: ' + err.message)
+      }
+    })
   }
 }
